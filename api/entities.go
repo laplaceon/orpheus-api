@@ -1,22 +1,53 @@
 package api
 
-// Product data
-type Product struct {
-	ID          int     `json:"id"`
-	Name        string  `json:"name"`
-	Category    string  `json:"category"`
-	Description string  `json:"description"`
-	Price       float32 `json:"price"`
+import "time"
+
+type User struct {
+	Id        int       `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-// Order data
-type Order struct {
-	Lines []Line `json:"lines"`
+type ApiKey struct {
+	Id        int       `json:"id"`
+	UserId    int       `json:"user_id"`
+	Name      string    `json:"name"`
+	Key       string    `json:"key"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-// Line data in an order
-type Line struct {
-	ProductID   int    `json:"productid"`
-	ProductName string `json:"productname"`
-	Quantity    int    `json:"quantity"`
+type Plan struct {
+	Id              int     `json:"id"`
+	Name            string  `json:"name"`
+	CreditsPerMonth float32 `json:"credits_per_month"`
+}
+
+type PlanPurchase struct {
+	Id        int       `json:"id"`
+	UserId    int       `json:"user_id"`
+	PlanId    int       `json:"plan_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type CreditPurchase struct {
+	Id        int       `json:"id"`
+	UserId    int       `json:"user_id"`
+	Amount    float32   `json:"amount"`
+	StripeId  string    `json:"stripe_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type HistoryItem struct {
+	Id        int       `json:"id"`
+	UserId    int       `json:"user_id"`
+	ActionId  int       `json:"action_id"`
+	InputSize float32   `json:"input_length"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Action struct {
+	Id   int     `json:"id"`
+	Name string  `json:"name"`
+	Cost float32 `json:"cost"`
 }

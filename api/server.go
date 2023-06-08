@@ -25,12 +25,14 @@ func Server() {
 	// prepare service, http handler and server
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
-	service := Service{}
+	service := InitService()
+
+	defer service.Database.Close()
 
 	// apis
 	api := router.Group("/api")
-	api.GET("/products", service.ProductService) // api: /api/products
-	api.POST("/orders", service.OrderService)    // api: /api/orders
+	api.GET("users/:id/history", service.GetHistory) // api: /api/products
+	// api.POST("/orders", service.OrderService)    // api: /api/orders
 
 	// serve static files
 	// router.Use(static.Serve("/", static.LocalFile("./build", true)))
