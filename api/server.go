@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	cache "github.com/chenyahui/gin-cache"
+	"github.com/chenyahui/gin-cache/persist"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,10 +31,15 @@ func Server() {
 
 	defer service.Database.Close()
 
+	memoryStore := persist.NewMemoryStore(6 * time.Hour)
+
 	// apis
-	api := router.Group("/api")
-	api.GET("users/:id/history", service.GetHistory) // api: /api/products
-	// api.POST("/orders", service.OrderService)    // api: /api/orders
+	api := router.Group("/v1")
+	api.GET("users", service.GetUser)
+	api.POST("users", service.CreateUser)
+	api.GET("users/:id/history", service.GetHistory)
+	api.POST("users/:id/history", service.GetHistory)
+	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
 
 	// serve static files
 	// router.Use(static.Serve("/", static.LocalFile("./build", true)))

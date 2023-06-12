@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -78,4 +79,20 @@ func (s *Service) CreateUser(c *gin.Context) {
 
 	// return the new order id
 	c.JSON(http.StatusCreated, gin.H{"id": newID})
+}
+
+func (s *Service) GetUser(c *gin.Context) {
+	email := c.Param("email")
+
+	row := s.Database.QueryRow("SELECT id FROM users WHERE email = ?", email)
+	if row.Err() != nil {
+		fmt.Println("error")
+	}
+
+	var id int
+	if err := row.Scan(&id); err != nil {
+		fmt.Println(err)
+	}
+
+	c.JSON(http.StatusOK, id)
 }

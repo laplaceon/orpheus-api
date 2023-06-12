@@ -7,6 +7,44 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (s *Service) GetActions(c *gin.Context) {
+	actions := []Action{}
+
+	db := s.Database
+
+	if err := db.Ping(); err != nil {
+		log.Println(err)
+		return
+	}
+
+	rows, err := db.Query("SELECT * FROM actions")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		action := Action{}
+		if err := rows.Scan(&action.Id, &action.Name, &action.Cost); err != nil {
+			log.Println(err)
+			continue
+		}
+		actions = append(actions, action)
+	}
+
+	log.Printf("Queried %d action items", len(actions))
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// return JSON
+	c.JSON(http.StatusOK, actions)
+}
+
 // LoadProductsFromDatabase load product list from DB
 func (s *Service) GetHistory(c *gin.Context) {
 	history := []HistoryItem{}
