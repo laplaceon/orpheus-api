@@ -3,14 +3,14 @@ package api
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-// OrderService is the POST service to add new order
 func (s *Service) CreateUser(c *gin.Context) {
 	newUser := User{}
 	if err := c.BindJSON(&newUser); err != nil {
@@ -19,14 +19,12 @@ func (s *Service) CreateUser(c *gin.Context) {
 		return
 	}
 
-	db := s.Database
-
-	if err := db.Ping(); err != nil {
+	if err := s.db.Ping(); err != nil {
 		log.Println(err)
 		return
 	}
 
-	rowStmt, err := db.Prepare("SELECT MAX(id) AS id FROM orders")
+	rowStmt, err := s.db.Prepare("SELECT MAX(id) AS id FROM orders")
 	if err != nil {
 		log.Println(err)
 		return
@@ -51,7 +49,7 @@ func (s *Service) CreateUser(c *gin.Context) {
 
 	// write each order line as a row
 
-	insertStmt, err := db.Prepare("INSERT INTO orders (id, product_id, quantity) values (?, ?, ?)")
+	insertStmt, err := s.db.Prepare("INSERT INTO orders (id, product_id, quantity) values (?, ?, ?)")
 	if err != nil {
 		log.Println(err)
 		return
@@ -84,15 +82,35 @@ func (s *Service) CreateUser(c *gin.Context) {
 func (s *Service) GetUser(c *gin.Context) {
 	email := c.Param("email")
 
-	row := s.Database.QueryRow("SELECT id FROM users WHERE email = ?", email)
-	if row.Err() != nil {
-		fmt.Println("error")
+	token, err := GetUser(email, s.db)
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func GetUser(email string, db *sql.DB) (tokenString string, err error) {
+	row := db.QueryRow("SELECT id FROM users WHERE email = ?", email)
+	if err = row.Err(); err != nil {
+		log.Println(err)
+		return
 	}
 
 	var id int
-	if err := row.Scan(&id); err != nil {
-		fmt.Println(err)
+	if err = row.Scan(&id); err != nil {
+		log.Println(err)
+		return
 	}
 
-	c.JSON(http.StatusOK, id)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id": id,
+	})
+
+	tokenString, err = token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	return
 }

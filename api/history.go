@@ -10,14 +10,12 @@ import (
 func (s *Service) GetActions(c *gin.Context) {
 	actions := []Action{}
 
-	db := s.Database
-
-	if err := db.Ping(); err != nil {
+	if err := s.db.Ping(); err != nil {
 		log.Println(err)
 		return
 	}
 
-	rows, err := db.Query("SELECT * FROM actions")
+	rows, err := s.db.Query("SELECT * FROM actions")
 	if err != nil {
 		log.Println(err)
 		return
@@ -51,14 +49,12 @@ func (s *Service) GetHistory(c *gin.Context) {
 
 	userId := c.Param("id")
 
-	db := s.Database
-
-	if err := db.Ping(); err != nil {
+	if err := s.db.Ping(); err != nil {
 		log.Println(err)
 		return
 	}
 
-	rows, err := db.Query("SELECT * FROM history WHERE user_id = ? ORDER BY created_at DESC", userId)
+	rows, err := s.db.Query("SELECT * FROM history WHERE user_id = ? ORDER BY created_at DESC", userId)
 	if err != nil {
 		log.Println(err)
 		return

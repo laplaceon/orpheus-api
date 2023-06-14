@@ -3,7 +3,9 @@ package api
 import (
 	"database/sql"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	// blank import for side effect
 
@@ -11,7 +13,8 @@ import (
 )
 
 type Service struct {
-	Database *sql.DB
+	db         *sql.DB
+	httpClient *http.Client
 }
 
 func InitService() Service {
@@ -24,5 +27,10 @@ func InitService() Service {
 		log.Fatal(err)
 	}
 
-	return Service{db}
+	return Service{
+		db,
+		&http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
 }

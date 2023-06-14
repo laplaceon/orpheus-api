@@ -29,13 +29,13 @@ func Server() {
 	router := gin.Default()
 	service := InitService()
 
-	defer service.Database.Close()
+	defer service.db.Close()
 
 	memoryStore := persist.NewMemoryStore(6 * time.Hour)
 
 	// apis
 	api := router.Group("/v1")
-	api.GET("users", service.GetUser)
+	api.GET("users/auth/:email", service.GetUser)
 	api.POST("users", service.CreateUser)
 	api.GET("users/:id/history", service.GetHistory)
 	api.POST("users/:id/history", service.GetHistory)
