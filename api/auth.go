@@ -18,6 +18,10 @@ func CheckTurnstile(cfResponse string, httpClient *http.Client) (err error) {
 	bodyStr, err := json.Marshal(body)
 
 	res, err := httpClient.Post("https://challenges.cloudflare.com/turnstile/v0/siteverify", "application/json", bytes.NewBuffer(bodyStr))
+	if err != nil {
+		return
+	}
+
 	defer res.Body.Close()
 
 	var outcome map[string]interface{}

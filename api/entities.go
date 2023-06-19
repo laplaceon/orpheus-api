@@ -42,12 +42,21 @@ type HistoryItem struct {
 	Id        int       `json:"id"`
 	UserId    int       `json:"user_id"`
 	ActionId  int       `json:"action_id"`
-	InputSize float32   `json:"input_size"`
+	Cost      float32   `json:"cost"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Action struct {
-	Id   int     `json:"id"`
-	Name string  `json:"name"`
-	Cost float32 `json:"cost"`
+	Id     int     `json:"id"`
+	Name   string  `json:"name"`
+	Cost   float32 `json:"cost"`
+	Length float32 `json:"length"`
 }
+
+// type ActionCost struct {
+// 	Id        int       `json:"id"`
+// 	ActionId  int       `json:"action_id"`
+// 	Cost      float32   `json:"cost"`
+// 	Length    float32   `json:"length"`
+// 	CreatedAt time.Time `json:"created_at"`
+// }

@@ -14,6 +14,7 @@ import (
 
 	cache "github.com/chenyahui/gin-cache"
 	"github.com/chenyahui/gin-cache/persist"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,6 +29,8 @@ func Server() {
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
 	service := InitService()
+
+	router.Use(cors.Default())
 
 	defer service.db.Close()
 
