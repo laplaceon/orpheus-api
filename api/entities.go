@@ -39,11 +39,12 @@ type CreditPurchase struct {
 }
 
 type HistoryItem struct {
-	Id        int       `json:"id"`
-	UserId    int       `json:"user_id"`
-	ActionId  int       `json:"action_id"`
-	Cost      float32   `json:"cost"`
-	CreatedAt time.Time `json:"created_at"`
+	Id         int       `json:"id"`
+	UserId     int       `json:"user_id"`
+	ActionId   int       `json:"action_id"`
+	ActionName string    `json:"action_name"`
+	Cost       float32   `json:"cost"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type Action struct {

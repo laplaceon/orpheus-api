@@ -9,7 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CheckTurnstile(cfResponse string, httpClient *http.Client) (err error) {
+type CreateUserPayload struct {
+	Email   string `json:"email"`
+	CfToken string `json:"cf_token"`
+}
+
+func CheckTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool, err error) {
 	body := gin.H{
 		"response": cfResponse,
 		"secret":   os.Getenv("TURNSTILE_SECRET"),
@@ -27,5 +32,5 @@ func CheckTurnstile(cfResponse string, httpClient *http.Client) (err error) {
 	var outcome map[string]interface{}
 	json.NewDecoder(res.Body).Decode(&outcome)
 
-	return
+	return outcome["success"].(bool), err
 }

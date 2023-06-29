@@ -41,7 +41,6 @@ func Server() {
 	api.GET("users/auth/:email", service.GetUser)
 	api.POST("users", service.CreateUser)
 	api.GET("users/:id/history", service.GetHistory)
-	api.POST("users/:id/history", service.GetHistory)
 	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
 
 	// serve static files

@@ -13,7 +13,8 @@ import (
 )
 
 type Service struct {
-	db         *sql.DB
+	db *sql.DB
+	// bgQueue    *rabbitmq.Conn
 	httpClient *http.Client
 }
 

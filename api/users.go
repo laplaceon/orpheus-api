@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -11,72 +10,58 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func (s *Service) CreateUser(c *gin.Context) {
-	newUser := User{}
-	if err := c.BindJSON(&newUser); err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Client) (newId int, err error) {
+	// map[error-codes:[timeout-or-duplicate] messages:[] success:false]
+	// map[action: cdata: challenge_ts:2023-06-29T16:39:46.455Z error-codes:[] hostname:localhost metadata:map[interactive:false] success:true]
 
-	if err := s.db.Ping(); err != nil {
-		log.Println(err)
-		return
-	}
+	isSuccess, err := CheckTurnstile(createUser.CfToken, httpClient)
 
-	rowStmt, err := s.db.Prepare("SELECT MAX(id) AS id FROM orders")
 	if err != nil {
 		log.Println(err)
 		return
+	} else if !isSuccess {
+		return
 	}
-	defer rowStmt.Close()
 
-	// get the last order id
+	row := db.QueryRow("SELECT id FROM users WHERE email = ?", createUser.Email)
 
-	var id sql.NullInt32
-	if err = rowStmt.QueryRow().Scan(&id); err != nil {
+	var id int
+	if err = row.Scan(&id); err != nil {
 		log.Println(err)
 		return
 	}
 
-	var newID int
-
-	if id.Valid {
-		newID = int(id.Int32) + 1
-	} else {
-		newID = 1
-	}
-
-	// write each order line as a row
-
-	insertStmt, err := s.db.Prepare("INSERT INTO orders (id, product_id, quantity) values (?, ?, ?)")
+	insertStmt, err := db.Prepare("INSERT into users (email) (?)")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer insertStmt.Close()
 
-	// var itemCount int
-	// for _, line := range newUser.Lines {
-	// 	itemCount += line.Quantity
-	// 	if _, err = insertStmt.Exec(newID, line.ProductID, line.Quantity); err != nil {
-	// 		log.Println(err)
-	// 	}
-	// }
+	if _, err = insertStmt.Exec(createUser.Email); err != nil {
+		log.Println(err)
+		return
+	}
 
-	// log.Printf("Order #%d (%d items) added\n", newID, itemCount)
+	return newId, err
+}
 
-	if err != nil || newID == 0 {
-		if newID == 0 {
-			err = errors.New("unable to get new user id")
-		}
+func (s *Service) CreateUser(c *gin.Context) {
+	var createUser CreateUserPayload
+	err := c.BindJSON(&createUser)
+
+	var newId int
+	if err == nil {
+		newId, err = CreateUser(createUser, s.db, s.httpClient)
+	}
+
+	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// return the new order id
-	c.JSON(http.StatusCreated, gin.H{"id": newID})
+	c.JSON(http.StatusCreated, gin.H{"id": newId})
 }
 
 func (s *Service) GetUser(c *gin.Context) {
