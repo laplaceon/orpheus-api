@@ -23,7 +23,7 @@ func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Clien
 		return
 	}
 
-	row := db.QueryRow("SELECT id FROM users WHERE email = ?", createUser.Email)
+	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", createUser.Email)
 
 	var id int
 	if err = row.Scan(&id); err != nil {
@@ -31,7 +31,7 @@ func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Clien
 		return
 	}
 
-	insertStmt, err := db.Prepare("INSERT into users (email) (?)")
+	insertStmt, err := db.Prepare("INSERT into users (email) (?);")
 	if err != nil {
 		log.Println(err)
 		return
@@ -79,7 +79,7 @@ func (s *Service) GetUser(c *gin.Context) {
 }
 
 func GetUser(email string, db *sql.DB) (tokenString string, err error) {
-	row := db.QueryRow("SELECT id FROM users WHERE email = ?", email)
+	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", email)
 	if err = row.Err(); err != nil {
 		log.Println(err)
 		return

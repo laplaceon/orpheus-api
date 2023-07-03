@@ -41,7 +41,12 @@ func Server() {
 	api.GET("users/auth/:email", service.GetUser)
 	api.POST("users", service.CreateUser)
 	api.GET("users/:id/history", service.GetHistory)
+	api.PUT("users/:id/credits", service.UpdatePurchasedCredits)
+	api.PUT("users/:id/plan", service.UpdatePlan)
 	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
+
+	// actions
+	api.POST("actions/genretransfer", service.CreateGenreTransferRequest)
 
 	// serve static files
 	// router.Use(static.Serve("/", static.LocalFile("./build", true)))
@@ -77,6 +82,8 @@ func Server() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutdown Server ...")
+
+	service.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

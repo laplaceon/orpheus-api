@@ -20,6 +20,7 @@ type Plan struct {
 	Id              int     `json:"id"`
 	Name            string  `json:"name"`
 	CreditsPerMonth float32 `json:"credits_per_month"`
+	ExpiryDays      int     `json:"expiry_days"`
 }
 
 type PlanPurchase struct {
@@ -45,6 +46,14 @@ type HistoryItem struct {
 	ActionName string    `json:"action_name"`
 	Cost       float32   `json:"cost"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+type GeneratedItem struct {
+	Id        int       `json:"id"`
+	HistoryId int       `json:"history_id"`
+	PlanId    int       `json:"plan_id"`
+	Url       string    `json:"url"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Action struct {
