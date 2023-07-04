@@ -10,11 +10,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Client) (newId int, err error) {
+func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *http.Client) (newId int, err error) {
 	// map[error-codes:[timeout-or-duplicate] messages:[] success:false]
 	// map[action: cdata: challenge_ts:2023-06-29T16:39:46.455Z error-codes:[] hostname:localhost metadata:map[interactive:false] success:true]
 
-	isSuccess, err := CheckTurnstile(createUser.CfToken, httpClient)
+	isSuccess, err := checkTurnstile(createUserPayload.CfToken, httpClient)
 
 	if err != nil {
 		log.Println(err)
@@ -23,7 +23,7 @@ func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Clien
 		return
 	}
 
-	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", createUser.Email)
+	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", createUserPayload.Email)
 
 	var id int
 	if err = row.Scan(&id); err != nil {
@@ -38,7 +38,7 @@ func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Clien
 	}
 	defer insertStmt.Close()
 
-	if _, err = insertStmt.Exec(createUser.Email); err != nil {
+	if _, err = insertStmt.Exec(createUserPayload.Email); err != nil {
 		log.Println(err)
 		return
 	}
@@ -47,12 +47,12 @@ func CreateUser(createUser CreateUserPayload, db *sql.DB, httpClient *http.Clien
 }
 
 func (s *Service) CreateUser(c *gin.Context) {
-	var createUser CreateUserPayload
-	err := c.BindJSON(&createUser)
+	var createUserPayload CreateUserPayload
+	err := c.BindJSON(&createUserPayload)
 
 	var newId int
 	if err == nil {
-		newId, err = CreateUser(createUser, s.db, s.httpClient)
+		newId, err = createUser(createUserPayload, s.db, s.httpClient)
 	}
 
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *Service) CreateUser(c *gin.Context) {
 func (s *Service) GetUser(c *gin.Context) {
 	email := c.Param("email")
 
-	token, err := GetUser(email, s.db)
+	token, err := getUser(email, s.db)
 
 	if err != nil {
 		log.Println(err)
@@ -78,7 +78,7 @@ func (s *Service) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func GetUser(email string, db *sql.DB) (tokenString string, err error) {
+func getUser(email string, db *sql.DB) (tokenString string, err error) {
 	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", email)
 	if err = row.Err(); err != nil {
 		log.Println(err)

@@ -51,19 +51,13 @@ func (s *Service) GetActions(c *gin.Context) {
 	c.JSON(http.StatusOK, actions)
 }
 
-// LoadProductsFromDatabase load product list from DB
-func (s *Service) GetHistory(c *gin.Context) {
+func (s *Service) GetAllHistory(c *gin.Context) {
 	history := []HistoryItem{}
 
 	userId := c.Param("id")
 
-	if err := s.db.Ping(); err != nil {
-		log.Println(err)
-		return
-	}
-
 	rows, err := s.db.Query(
-		`SELECT history.id, user_id, action_id, name, cost * (input_size / length) as cost, history.created_at FROM history 
+		`SELECT history.id, user_id, action_id, name, cost * (input_size / length) as cost, status, history.created_at FROM history 
 			JOIN action_costs ON history.cost_id = action_costs.id
 			JOIN actions ON action_costs.action_id = actions.id
 			WHERE user_id = ?
@@ -76,7 +70,7 @@ func (s *Service) GetHistory(c *gin.Context) {
 
 	for rows.Next() {
 		h := HistoryItem{}
-		if err := rows.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.CreatedAt); err != nil {
+		if err := rows.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.Status, &h.CreatedAt); err != nil {
 			log.Println(err)
 			continue
 		}
@@ -91,6 +85,58 @@ func (s *Service) GetHistory(c *gin.Context) {
 		return
 	}
 
-	// return JSON
 	c.JSON(http.StatusOK, history)
+}
+
+func (s *Service) GetHistoryItem(c *gin.Context) {
+	h := HistoryItem{}
+
+	id := c.Param("id")
+
+	row := s.db.QueryRow(
+		`SELECT history.id, user_id, action_id, name, cost * (input_size / length) as cost, status, history.created_at FROM history 
+			JOIN action_costs ON history.cost_id = action_costs.id
+			JOIN actions ON action_costs.action_id = actions.id
+			WHERE history.id = ?;`, id)
+
+	if err := row.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.Status, &h.CreatedAt); err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, h)
+}
+
+func (s *Service) GetGeneratedFromHistory(c *gin.Context) {
+	generatedItems := []GeneratedItem{}
+
+	id := c.Param("id")
+
+	rows, err := s.db.Query(`SELECT * FROM gen_items WHERE history_id = ?;`, id)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		g := GeneratedItem{}
+		if err := rows.Scan(&g.Id, &g.HistoryId, &g.PlanId, &g.Url, &g.CreatedAt); err != nil {
+			log.Println(err)
+			continue
+		}
+		generatedItems = append(generatedItems, g)
+	}
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, generatedItems)
+
 }

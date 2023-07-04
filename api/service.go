@@ -48,8 +48,7 @@ func InitService() Service {
 	amqpPub, err := rabbitmq.NewPublisher(
 		amqpConn,
 		rabbitmq.WithPublisherOptionsLogging,
-		rabbitmq.WithPublisherOptionsExchangeName("events"),
-		rabbitmq.WithPublisherOptionsExchangeDeclare,
+		rabbitmq.WithPublisherOptionsExchangeName("amq.direct"),
 	)
 
 	if err != nil {

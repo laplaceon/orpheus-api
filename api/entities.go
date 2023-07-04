@@ -45,6 +45,7 @@ type HistoryItem struct {
 	ActionId   int       `json:"action_id"`
 	ActionName string    `json:"action_name"`
 	Cost       float32   `json:"cost"`
+	Status     int       `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 

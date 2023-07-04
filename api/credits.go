@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UpdatePlan(userId, db *sql.DB) {
+func updatePlan(userId, db *sql.DB) {
 
 }
 
-func UpdatePurchasedCredits(userId, db *sql.DB) {
+func updatePurchasedCredits(userId, db *sql.DB) {
 
 }
 
@@ -41,10 +41,10 @@ func GetUsableCredits(userId int, db *sql.DB) (usableCredits int, err error) {
 		return
 	}
 
-	rows, err = db.Query(`SELECT SUM(cost * (input_size / length)) as credits_used FROM history 
+	rows, err = db.Query(`SELECT IFNULL(SUM(cost * (input_size / length)), 0) as credits_used FROM history 
 					JOIN action_costs ON history.cost_id = action_costs.id
 					JOIN actions ON action_costs.action_id = actions.id
-				WHERE user_id = ?;`, userId)
+				WHERE user_id = ? AND status != 1;`, userId)
 
 	if err != nil {
 		log.Println(err)

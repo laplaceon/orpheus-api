@@ -14,7 +14,7 @@ type CreateUserPayload struct {
 	CfToken string `json:"cf_token"`
 }
 
-func CheckTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool, err error) {
+func checkTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool, err error) {
 	body := gin.H{
 		"response": cfResponse,
 		"secret":   os.Getenv("TURNSTILE_SECRET"),
