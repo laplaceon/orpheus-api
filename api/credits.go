@@ -44,7 +44,7 @@ func GetUsableCredits(userId int, db *sql.DB) (usableCredits int, err error) {
 	rows, err = db.Query(`SELECT IFNULL(SUM(cost * (input_size / length)), 0) as credits_used FROM history 
 					JOIN action_costs ON history.cost_id = action_costs.id
 					JOIN actions ON action_costs.action_id = actions.id
-				WHERE user_id = ? AND status != 1;`, userId)
+				WHERE user_id = ? AND status != 2;`, userId)
 
 	if err != nil {
 		log.Println(err)

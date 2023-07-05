@@ -9,8 +9,8 @@ import (
 )
 
 type ActionRequest struct {
-	UserId int    `json:"user_id"`
-	Data   string `json:"data"`
+	UserId int    `json:"user_id" msgpack:"user_id"`
+	Data   string `json:"data" msgpack:"data"`
 }
 
 func createGenreTransferRequest(actionRequest ActionRequest, pub *rabbitmq.Publisher) (err error) {
@@ -24,7 +24,6 @@ func createGenreTransferRequest(actionRequest ActionRequest, pub *rabbitmq.Publi
 	err = pub.Publish(
 		arB,
 		[]string{"actions"},
-		rabbitmq.WithPublishOptionsExchange("amq.direct"),
 	)
 
 	return err
