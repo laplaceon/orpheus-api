@@ -9,12 +9,20 @@ import (
 )
 
 type ActionRequest struct {
-	UserId int    `json:"user_id" msgpack:"user_id"`
-	Data   string `json:"data" msgpack:"data"`
+	UserId int    `json:"user_id"`
+	Data   string `json:"data"`
+}
+
+type ActionRequestProcessable struct {
+	HistoryId int    `msgpack:"history_id"`
+	Data      string `msgpack:"data"`
 }
 
 func createGenreTransferRequest(actionRequest ActionRequest, pub *rabbitmq.Publisher) (err error) {
-	arB, err := msgpack.Marshal(actionRequest)
+	arB, err := msgpack.Marshal(ActionRequestProcessable{
+		HistoryId: actionRequest.UserId,
+		Data:      actionRequest.Data,
+	})
 
 	if err != nil {
 		log.Println(err)

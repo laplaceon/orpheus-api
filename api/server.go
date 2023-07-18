@@ -40,15 +40,17 @@ func Server() {
 	api := router.Group("/v1")
 	api.GET("users/auth/:email", service.GetUser)
 	api.POST("users", service.CreateUser)
-	api.GET("users/:id/history", service.GetAllHistory)
-	api.GET("history/:id", service.GetHistoryItem)
-	api.GET("history/:id/generated", service.GetGeneratedFromHistory)
-	api.PUT("users/:id/credits", service.UpdatePurchasedCredits)
-	api.PUT("users/:id/plan", service.UpdatePlan)
 	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
 
-	// actions
-	api.POST("actions/genretransfer", service.CreateGenreTransferRequest)
+	api.Use(AuthRequired)
+	{
+		api.GET("users/:id/history", service.GetAllHistory)
+		api.GET("history/:id", service.GetHistoryItem)
+		api.GET("history/:id/generated", service.GetGeneratedFromHistory)
+		api.PUT("users/:id/credits", service.UpdatePurchasedCredits)
+		api.PUT("users/:id/plan", service.UpdatePlan)
+		api.POST("actions/genretransfer", service.CreateGenreTransferRequest)
+	}
 
 	// serve static files
 	// router.Use(static.Serve("/", static.LocalFile("./build", true)))

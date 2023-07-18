@@ -2,15 +2,14 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
-func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *http.Client) (newId int, err error) {
+func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
 	// map[error-codes:[timeout-or-duplicate] messages:[] success:false]
 	// map[action: cdata: challenge_ts:2023-06-29T16:39:46.455Z error-codes:[] hostname:localhost metadata:map[interactive:false] success:true]
 
@@ -23,36 +22,46 @@ func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *htt
 		return
 	}
 
-	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", createUserPayload.Email)
+	row := db.QueryRow("SELECT EXISTS(SELECT id FROM users WHERE email = ?);", createUserPayload.Email)
 
-	var id int
-	if err = row.Scan(&id); err != nil {
+	var exists bool
+	if err = row.Scan(&exists); err != nil {
 		log.Println(err)
 		return
 	}
 
-	insertStmt, err := db.Prepare("INSERT into users (email) (?);")
+	if exists {
+		err = errors.New("User already exists")
+		log.Println(err)
+		return
+	}
+
+	insertStmt, err := db.Prepare("INSERT into users (email) VALUES (?);")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer insertStmt.Close()
 
-	if _, err = insertStmt.Exec(createUserPayload.Email); err != nil {
+	insertResult, err := insertStmt.Exec(createUserPayload.Email)
+
+	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	return newId, err
+	newId, err := insertResult.LastInsertId()
+
+	return idToJwt(newId)
 }
 
 func (s *Service) CreateUser(c *gin.Context) {
 	var createUserPayload CreateUserPayload
 	err := c.BindJSON(&createUserPayload)
 
-	var newId int
+	var tokenString string
 	if err == nil {
-		newId, err = createUser(createUserPayload, s.db, s.httpClient)
+		tokenString, err = createUser(createUserPayload, s.db, s.httpClient)
 	}
 
 	if err != nil {
@@ -61,7 +70,7 @@ func (s *Service) CreateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": newId})
+	c.JSON(http.StatusCreated, gin.H{"token": tokenString})
 }
 
 func (s *Service) GetUser(c *gin.Context) {
@@ -85,17 +94,11 @@ func getUser(email string, db *sql.DB) (tokenString string, err error) {
 		return
 	}
 
-	var id int
+	var id int64
 	if err = row.Scan(&id); err != nil {
 		log.Println(err)
 		return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id": id,
-	})
-
-	tokenString, err = token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-
-	return
+	return idToJwt(id)
 }

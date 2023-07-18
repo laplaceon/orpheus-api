@@ -7,11 +7,22 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type CreateUserPayload struct {
 	Email   string `json:"email"`
 	CfToken string `json:"cf_token"`
+}
+
+func idToJwt(id int64) (tokenString string, err error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id": id,
+	})
+
+	tokenString, err = token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	return
 }
 
 func checkTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool, err error) {
@@ -33,4 +44,8 @@ func checkTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool,
 	json.NewDecoder(res.Body).Decode(&outcome)
 
 	return outcome["success"].(bool), err
+}
+
+func AuthRequired(c *gin.Context) {
+	c.Next()
 }
