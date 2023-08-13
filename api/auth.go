@@ -3,16 +3,19 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type CreateUserPayload struct {
-	Email   string `json:"email"`
-	CfToken string `json:"cf_token"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	CfToken  string `json:"cf_token"`
 }
 
 func idToJwt(id int64) (tokenString string, err error) {
@@ -46,6 +49,33 @@ func checkTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool,
 	return outcome["success"].(bool), err
 }
 
+type authHeader struct {
+	IDToken string `header:"Authorization"`
+}
+
+func checkAuthHeader(c *gin.Context) {
+	h := authHeader{}
+
+	if err := c.ShouldBindHeader(&h); err != nil {
+		c.Abort()
+		return
+	}
+
+	idTokenHeader := strings.Split(h.IDToken, "Bearer ")
+	if len(idTokenHeader) < 2 {
+		// err := apperrors.NewAuthorization("Must provide Authorization header with format `Bearer {token}`")
+
+		// c.JSON(err.Status(), gin.H{
+		// 	"error": err,
+		// })
+		c.Abort()
+		return
+	}
+
+	fmt.Println(idTokenHeader[1])
+}
+
 func AuthRequired(c *gin.Context) {
+	checkAuthHeader(c)
 	c.Next()
 }

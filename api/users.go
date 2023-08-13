@@ -3,10 +3,13 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/alexedwards/argon2id"
 )
 
 func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
@@ -36,15 +39,19 @@ func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *htt
 		return
 	}
 
-	insertStmt, err := db.Prepare("INSERT into users (email) VALUES (?);")
+	hash, err := argon2id.CreateHash(createUserPayload.Password, argon2id.DefaultParams)
+	if err != nil {
+		log.Println(err)
+	}
+
+	insertStmt, err := db.Prepare("INSERT into users (email, password) VALUES (?, ?);")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer insertStmt.Close()
 
-	insertResult, err := insertStmt.Exec(createUserPayload.Email)
-
+	insertResult, err := insertStmt.Exec(createUserPayload.Email, hash)
 	if err != nil {
 		log.Println(err)
 		return
@@ -76,7 +83,7 @@ func (s *Service) CreateUser(c *gin.Context) {
 func (s *Service) GetUser(c *gin.Context) {
 	email := c.Param("email")
 
-	token, err := getUser(email, s.db)
+	token, err := getUser(email, "", s.db)
 
 	if err != nil {
 		log.Println(err)
@@ -87,7 +94,7 @@ func (s *Service) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func getUser(email string, db *sql.DB) (tokenString string, err error) {
+func getUser(email string, password string, db *sql.DB) (tokenString string, err error) {
 	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", email)
 	if err = row.Err(); err != nil {
 		log.Println(err)
@@ -99,6 +106,13 @@ func getUser(email string, db *sql.DB) (tokenString string, err error) {
 		log.Println(err)
 		return
 	}
+
+	match, err := argon2id.ComparePasswordAndHash(password, "asdsad")
+	if err != nil {
+		log.Println(err)
+	}
+
+	fmt.Println(match)
 
 	return idToJwt(id)
 }

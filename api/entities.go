@@ -3,8 +3,9 @@ package api
 import "time"
 
 type User struct {
-	Id        int       `json:"id"`
-	Email     string    `json:"email"`
+	Id        int    `json:"id"`
+	Email     string `json:"email"`
+	password  string
 	CreatedAt time.Time `json:"created_at"`
 }
 
