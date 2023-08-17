@@ -12,7 +12,7 @@ import (
 	"github.com/alexedwards/argon2id"
 )
 
-func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
+func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
 	// map[error-codes:[timeout-or-duplicate] messages:[] success:false]
 	// map[action: cdata: challenge_ts:2023-06-29T16:39:46.455Z error-codes:[] hostname:localhost metadata:map[interactive:false] success:true]
 
@@ -22,6 +22,7 @@ func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *htt
 		log.Println(err)
 		return
 	} else if !isSuccess {
+		err = errors.New("Failed cloudflare check")
 		return
 	}
 
@@ -44,6 +45,8 @@ func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *htt
 		log.Println(err)
 	}
 
+	fmt.Println("pass", hash)
+
 	insertStmt, err := db.Prepare("INSERT into users (email, password) VALUES (?, ?);")
 	if err != nil {
 		log.Println(err)
@@ -63,7 +66,7 @@ func createUser(createUserPayload CreateUserPayload, db *sql.DB, httpClient *htt
 }
 
 func (s *Service) CreateUser(c *gin.Context) {
-	var createUserPayload CreateUserPayload
+	var createUserPayload UserAuthPayload
 	err := c.BindJSON(&createUserPayload)
 
 	var tokenString string
@@ -81,9 +84,15 @@ func (s *Service) CreateUser(c *gin.Context) {
 }
 
 func (s *Service) GetUser(c *gin.Context) {
-	email := c.Param("email")
+	var getUserPayload UserAuthPayload
 
-	token, err := getUser(email, "", s.db)
+	err := c.BindJSON(&getUserPayload)
+
+	if err == nil {
+
+	}
+
+	token, err := getUser(getUserPayload, s.db, s.httpClient)
 
 	if err != nil {
 		log.Println(err)
@@ -94,25 +103,42 @@ func (s *Service) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func getUser(email string, password string, db *sql.DB) (tokenString string, err error) {
-	row := db.QueryRow("SELECT id FROM users WHERE email = ?;", email)
+func getUser(getUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
+	isSuccess, err := checkTurnstile(getUserPayload.CfToken, httpClient)
+
+	if err != nil {
+		log.Println(err)
+		return
+	} else if !isSuccess {
+		err = errors.New("Failed cloudflare check")
+		return
+	}
+
+	row := db.QueryRow("SELECT id, password FROM users WHERE email = ?;", getUserPayload.Email)
 	if err = row.Err(); err != nil {
 		log.Println(err)
 		return
 	}
 
 	var id int64
-	if err = row.Scan(&id); err != nil {
+	var hash string
+	if err = row.Scan(&id, &hash); err != nil {
 		log.Println(err)
 		return
 	}
 
-	match, err := argon2id.ComparePasswordAndHash(password, "asdsad")
+	fmt.Println(getUserPayload.Password, hash)
+
+	match, err := argon2id.ComparePasswordAndHash(getUserPayload.Password, hash)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
-	fmt.Println(match)
+	if !match {
+		err = errors.New("Incorrect password")
+		return
+	}
 
 	return idToJwt(id)
 }

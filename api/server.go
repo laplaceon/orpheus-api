@@ -30,7 +30,11 @@ func Server() {
 	router := gin.Default()
 	service := InitService()
 
-	router.Use(cors.Default())
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "Authorization")
+	corsConfig.AllowAllOrigins = true
+
+	router.Use(cors.New(corsConfig))
 
 	defer service.db.Close()
 
@@ -38,8 +42,8 @@ func Server() {
 
 	// apis
 	api := router.Group("/v1")
-	api.GET("users/auth/:email", service.GetUser)
 	api.POST("users", service.CreateUser)
+	api.POST("users/auth", service.GetUser)
 	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
 
 	api.Use(AuthRequired)

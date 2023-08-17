@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type CreateUserPayload struct {
+type UserAuthPayload struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	CfToken  string `json:"cf_token"`
@@ -68,11 +67,20 @@ func checkAuthHeader(c *gin.Context) {
 		// c.JSON(err.Status(), gin.H{
 		// 	"error": err,
 		// })
-		c.Abort()
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	fmt.Println(idTokenHeader[1])
+	claims := &jwt.MapClaims{}
+
+	token, err := jwt.ParseWithClaims(idTokenHeader[1], claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+
+	if err != nil || !token.Valid {
+		c.AbortWithStatus(http.StatusUnauthorized)
+	}
+
 }
 
 func AuthRequired(c *gin.Context) {
