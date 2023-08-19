@@ -12,75 +12,76 @@ import (
 	"github.com/alexedwards/argon2id"
 )
 
-func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client) (tokenString string, err error) {
+func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client) (newId int64, err ClientError) {
 	// map[error-codes:[timeout-or-duplicate] messages:[] success:false]
 	// map[action: cdata: challenge_ts:2023-06-29T16:39:46.455Z error-codes:[] hostname:localhost metadata:map[interactive:false] success:true]
 
-	isSuccess, err := checkTurnstile(createUserPayload.CfToken, httpClient)
+	err = validate.Struct(createUserPayload)
 
 	if err != nil {
-		log.Println(err)
-		return
-	} else if !isSuccess {
-		err = errors.New("Failed cloudflare check")
-		return
+		fmt.Println(err.Error())
+	}
+
+	_, err = checkTurnstile(createUserPayload.CfToken, httpClient)
+
+	if err != nil {
+		return 0, NewHttpError(err, http.StatusInternalServerError, "Error setting")
+	} else if false {
+		return 0, NewHttpError(nil, http.StatusUnauthorized, "Invalid cloudflare check")
 	}
 
 	row := db.QueryRow("SELECT EXISTS(SELECT id FROM users WHERE email = ?);", createUserPayload.Email)
 
 	var exists bool
 	if err = row.Scan(&exists); err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
 	if exists {
-		err = errors.New("User already exists")
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusUnauthorized, "A user with this email already exists")
 	}
 
 	hash, err := argon2id.CreateHash(createUserPayload.Password, argon2id.DefaultParams)
 	if err != nil {
-		log.Println(err)
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
-	fmt.Println("pass", hash)
+	fmt.Println(hash)
 
 	insertStmt, err := db.Prepare("INSERT into users (email, password) VALUES (?, ?);")
 	if err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 	defer insertStmt.Close()
 
-	insertResult, err := insertStmt.Exec(createUserPayload.Email, hash)
+	// insertResult, err := insertStmt.Exec(createUserPayload.Email, hash)
+	// if err != nil {
+	// 	return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	// }
+
+	// newId, err = insertResult.LastInsertId()
 	if err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
-	newId, err := insertResult.LastInsertId()
-
-	return idToJwt(newId)
+	return
 }
 
 func (s *Service) CreateUser(c *gin.Context) {
 	var createUserPayload UserAuthPayload
 	err := c.BindJSON(&createUserPayload)
 
-	var tokenString string
+	var newId int64
 	if err == nil {
-		tokenString, err = createUser(createUserPayload, s.db, s.httpClient)
+		newId, err = createUser(createUserPayload, s.db, s.httpClient)
 	}
 
 	if err != nil {
-		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"token": tokenString})
+	c.JSON(http.StatusCreated, gin.H{"id": newId})
 }
 
 func (s *Service) GetUser(c *gin.Context) {
@@ -88,11 +89,10 @@ func (s *Service) GetUser(c *gin.Context) {
 
 	err := c.BindJSON(&getUserPayload)
 
+	var token string
 	if err == nil {
-
+		token, err = getUser(getUserPayload, s.db, s.httpClient)
 	}
-
-	token, err := getUser(getUserPayload, s.db, s.httpClient)
 
 	if err != nil {
 		log.Println(err)

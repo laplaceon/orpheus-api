@@ -12,19 +12,22 @@ import (
 )
 
 type UserAuthPayload struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	CfToken  string `json:"cf_token"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,alphanum,min=6"`
+	CfToken  string `json:"cf_token" validate:"required"`
 }
 
-func idToJwt(id int64) (tokenString string, err error) {
+func idToJwt(id int64) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id": id,
 	})
 
-	tokenString, err = token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return "", NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
 
-	return
+	return tokenString, nil
 }
 
 func checkTurnstile(cfResponse string, httpClient *http.Client) (isSuccess bool, err error) {

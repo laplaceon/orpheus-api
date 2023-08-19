@@ -16,7 +16,10 @@ import (
 	"github.com/chenyahui/gin-cache/persist"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
+
+var validate *validator.Validate
 
 func Server() {
 	// read command-line flags
@@ -37,6 +40,8 @@ func Server() {
 	router.Use(cors.New(corsConfig))
 
 	defer service.db.Close()
+
+	validate = validator.New()
 
 	memoryStore := persist.NewMemoryStore(6 * time.Hour)
 
