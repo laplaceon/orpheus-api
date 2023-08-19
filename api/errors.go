@@ -9,11 +9,7 @@ type HttpError struct {
 }
 
 func (e HttpError) Error() string {
-	if e.Cause == nil {
-		return e.Message
-	}
-
-	return e.Message + " : " + e.Cause.Error()
+	return e.Message
 }
 
 type ClientError interface {
