@@ -1,8 +1,10 @@
 package api
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,37 +53,42 @@ func (s *Service) GetActions(c *gin.Context) {
 	c.JSON(http.StatusOK, actions)
 }
 
-func (s *Service) GetAllHistory(c *gin.Context) {
-	history := []HistoryItem{}
-
-	userId := c.Param("id")
-
-	rows, err := s.db.Query(
+func getAllHistory(userId int, db *sql.DB) (history []HistoryItem, err ClientError) {
+	rows, err := db.Query(
 		`SELECT history.id, user_id, action_id, name, cost * (input_size / length) as cost, status, history.created_at FROM history 
 			JOIN action_costs ON history.cost_id = action_costs.id
 			JOIN actions ON action_costs.action_id = actions.id
 			WHERE user_id = ?
 			ORDER BY created_at DESC;`, userId)
+
 	if err != nil {
-		log.Println(err)
-		return
+		return nil, NewHttpError(err, http.StatusInternalServerError, "There was an error with the server.")
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		h := HistoryItem{}
 		if err := rows.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.Status, &h.CreatedAt); err != nil {
-			log.Println(err)
-			continue
+			return nil, NewHttpError(err, http.StatusInternalServerError, "There was an error with the server.")
 		}
 		history = append(history, h)
 	}
 
-	log.Printf("Queried %d history items", len(history))
+	return
+}
+
+func (s *Service) GetAllHistory(c *gin.Context) {
+	userId, err := strconv.Atoi(c.Param("id"))
+
+	var history []HistoryItem
+	if err == nil {
+		history, err = getAllHistory(userId, s.db)
+	} else {
+		err = NewHttpError(err, http.StatusInternalServerError, "Incorrect user id")
+	}
 
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(err.(HttpError).Status, gin.H{"error": err.Error()})
 		return
 	}
 

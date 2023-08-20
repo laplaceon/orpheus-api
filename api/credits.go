@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,39 +23,22 @@ func (s *Service) UpdatePurchasedCredits(c *gin.Context) {
 
 }
 
-func GetUsableCredits(userId int, db *sql.DB) (usableCredits int, err error) {
-	rows, err := db.Query(`SELECT SUM(total) AS credits_total FROM (
+func getUsableCredits(userId int, db *sql.DB) (usableCredits int, err ClientError) {
+	row := db.QueryRow(`SELECT SUM(credits) AS usable_credits FROM (
+				SELECT SUM(total) AS credits FROM (
 					SELECT SUM(amount) as total FROM credit_purchases WHERE user_id = ? GROUP BY user_id, amount 
 					UNION ALL 
 					SELECT credits_per_month as total FROM plans WHERE id = IFNULL((SELECT plan_id FROM plan_purchases WHERE user_id = ? AND DATE_ADD(created_at, INTERVAL 1 MONTH) > CURRENT_TIMESTAMP), 1)
-				) s;`, userId, userId)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	var totalCredits int
-	if err = rows.Scan(&totalCredits); err != nil {
-		log.Println(err)
-		return
-	}
-
-	rows, err = db.Query(`SELECT IFNULL(SUM(cost * (input_size / length)), 0) as credits_used FROM history 
+				) s UNION ALL 
+				SELECT -IFNULL(SUM(cost * (input_size / length)), 0) as credits FROM history 
 					JOIN action_costs ON history.cost_id = action_costs.id
 					JOIN actions ON action_costs.action_id = actions.id
-				WHERE user_id = ? AND status != 2;`, userId)
+				WHERE user_id = ? AND status != 2
+			) s;`, userId, userId, userId)
 
-	if err != nil {
-		log.Println(err)
-		return
+	if err = row.Scan(&usableCredits); err != nil {
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
-	var usedCredits int
-	if err = rows.Scan(&usedCredits); err != nil {
-		log.Println(err)
-		return
-	}
-
-	return totalCredits - usedCredits, err
+	return usableCredits, err
 }

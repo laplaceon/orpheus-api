@@ -17,9 +17,11 @@ type UserAuthPayload struct {
 	CfToken  string `json:"cf_token" validate:"required"`
 }
 
-func idToJwt(id int64) (string, error) {
+func userToJwt(user User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id": id,
+		"id":       user.Id,
+		"email":    user.Email,
+		"verified": user.Verified,
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -83,7 +85,6 @@ func checkAuthHeader(c *gin.Context) {
 	if err != nil || !token.Valid {
 		c.AbortWithStatus(http.StatusUnauthorized)
 	}
-
 }
 
 func AuthRequired(c *gin.Context) {

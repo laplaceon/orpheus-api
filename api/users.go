@@ -131,22 +131,21 @@ func getUser(getUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client
 
 	if err != nil {
 		return "", NewHttpError(err, http.StatusInternalServerError, "Error checking cloudflare.")
-	} else if cfSuccess {
+	} else if !cfSuccess {
 		return "", NewHttpError(nil, http.StatusBadRequest, "Failed cloudflare check.")
 	}
 
-	row := db.QueryRow("SELECT id, password FROM users WHERE email = ?;", getUserPayload.Email)
+	row := db.QueryRow("SELECT id, email, password, verified FROM users WHERE email = ?;", getUserPayload.Email)
 	if err = row.Err(); err != nil {
 		return "", NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
-	var id int64
-	var hash string
-	if err = row.Scan(&id, &hash); err != nil {
+	user := User{}
+	if err = row.Scan(&user.Id, &user.Email, &user.password, &user.Verified); err != nil {
 		return "", NewHttpError(err, http.StatusBadRequest, "Either the username or password is incorrect.")
 	}
 
-	match, err := argon2id.ComparePasswordAndHash(getUserPayload.Password, hash)
+	match, err := argon2id.ComparePasswordAndHash(getUserPayload.Password, user.password)
 	if err != nil {
 		return "", NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
@@ -155,5 +154,5 @@ func getUser(getUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client
 		return "", NewHttpError(err, http.StatusUnauthorized, "Either the username or password is incorrect.")
 	}
 
-	return idToJwt(id)
+	return userToJwt(user)
 }
