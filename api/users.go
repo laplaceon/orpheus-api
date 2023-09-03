@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/asaskevich/govalidator"
@@ -155,4 +156,49 @@ func getUser(getUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client
 	}
 
 	return userToJwt(user)
+}
+
+func (s *Service) GetUserWithId(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	var user UserData
+	if err == nil {
+		user, err = getUserWithId(id, s.db)
+	} else {
+		err = NewHttpError(err, http.StatusBadRequest, "Incorrect user id")
+	}
+
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+type UserData struct {
+	Id            int     `json:"id"`
+	Email         string  `json:"email"`
+	Verified      bool    `json:"verified"`
+	PlanId        int     `json:"plan_id"`
+	UsableCredits float64 `json:"usable_credits"`
+}
+
+func getUserWithId(userId int, db *sql.DB) (user UserData, err ClientError) {
+	row := db.QueryRow(`SELECT users.id, email, verified, IFNULL(plan_id, 1) as plan_id FROM users
+		LEFT JOIN plan_purchases ON users.id = user_id AND DATE_ADD(plan_purchases.created_at, INTERVAL 1 MONTH) > CURRENT_TIMESTAMP
+		WHERE users.id = ?;`, userId)
+
+	if err = row.Err(); err != nil {
+		return user, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
+
+	if err = row.Scan(&user.Id, &user.Email, &user.Verified, &user.PlanId); err != nil {
+		return user, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
+
+	user.UsableCredits, err = getUsableCredits(userId, db)
+
+	return
 }

@@ -84,7 +84,7 @@ func (s *Service) GetAllHistory(c *gin.Context) {
 	if err == nil {
 		history, err = getAllHistory(userId, s.db)
 	} else {
-		err = NewHttpError(err, http.StatusInternalServerError, "Incorrect user id")
+		err = NewHttpError(err, http.StatusBadRequest, "Incorrect user id")
 	}
 
 	if err != nil {
@@ -107,8 +107,7 @@ func (s *Service) GetHistoryItem(c *gin.Context) {
 			WHERE history.id = ?;`, id)
 
 	if err := row.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.Status, &h.CreatedAt); err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "There was an error with the server"})
 		return
 	}
 

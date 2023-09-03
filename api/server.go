@@ -16,6 +16,9 @@ import (
 	"github.com/chenyahui/gin-cache/persist"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 )
 
 func Server() {
@@ -24,6 +27,17 @@ func Server() {
 	port := flag.Int("port", 8080, "Server port")
 	docker := flag.Bool("docker", false, "Running in docker")
 	flag.Parse()
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           "https://abd5e43ad02ef85f85e6756351bff329@o4505818349240320.ingest.sentry.io/4505818351534080",
+		EnableTracing: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v", err)
+	}
 
 	// prepare service, http handler and server
 	gin.SetMode(gin.TestMode)
@@ -34,7 +48,7 @@ func Server() {
 	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "Authorization")
 	corsConfig.AllowAllOrigins = true
 
-	router.Use(cors.New(corsConfig))
+	router.Use(sentrygin.New(sentrygin.Options{}), cors.New(corsConfig))
 
 	defer service.db.Close()
 
@@ -45,14 +59,14 @@ func Server() {
 	api.POST("users", service.CreateUser)
 	api.POST("users/auth", service.GetUser)
 	api.GET("actions", cache.CacheByRequestURI(memoryStore, 1*time.Hour), service.GetActions)
+	api.POST("payments", service.ProcessPaymentFromStripe)
 
 	api.Use(AuthRequired)
 	{
+		api.GET("users/:id", service.GetUserWithId)
 		api.GET("users/:id/history", service.GetAllHistory)
 		api.GET("history/:id", service.GetHistoryItem)
 		api.GET("history/:id/generated", service.GetGeneratedFromHistory)
-		api.PUT("users/:id/credits", service.UpdatePurchasedCredits)
-		api.PUT("users/:id/plan", service.UpdatePlan)
 		api.POST("actions/genretransfer", service.CreateGenreTransferRequest)
 	}
 

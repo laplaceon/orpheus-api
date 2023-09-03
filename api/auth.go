@@ -19,9 +19,9 @@ type UserAuthPayload struct {
 
 func userToJwt(user User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":       user.Id,
-		"email":    user.Email,
-		"verified": user.Verified,
+		"id": user.Id,
+		// "email":    user.Email,
+		// "verified": user.Verified,
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
