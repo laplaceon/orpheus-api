@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -12,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/alexedwards/argon2id"
+
+	"github.com/lindell/go-burner-email-providers/burner"
 )
 
 func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.Client) (newId int64, err ClientError) {
@@ -30,6 +31,10 @@ func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.
 
 	if len(validationErrors) > 0 {
 		return 0, NewHttpError(nil, http.StatusBadRequest, strings.Join(validationErrors, " "))
+	}
+
+	if burner.IsBurnerEmail(createUserPayload.Email) {
+		return 0, NewHttpError(nil, http.StatusBadRequest, "Disposable email services are not allowed.")
 	}
 
 	cfSuccess, err := checkTurnstile(createUserPayload.CfToken, httpClient)
@@ -55,8 +60,6 @@ func createUser(createUserPayload UserAuthPayload, db *sql.DB, httpClient *http.
 	if err != nil {
 		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
-
-	fmt.Println(hash)
 
 	insertStmt, err := db.Prepare("INSERT into users (email, password) VALUES (?, ?);")
 	if err != nil {

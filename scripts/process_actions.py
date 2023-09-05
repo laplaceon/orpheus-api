@@ -1,6 +1,8 @@
+import os
+
 import pika
 import msgpack
-
+from dotenv import load_dotenv
 import concurrent.futures
 
 import base64
@@ -13,7 +15,11 @@ from botocore.config import Config
 
 import uuid
 
-connection = pika.BlockingConnection(pika.URLParameters("amqp://guest:leo869636@localhost"))
+load_dotenv()
+
+bucket_name = "tuneforge"
+
+connection = pika.BlockingConnection(pika.URLParameters(os.getenv('RABBIT_CONN')))
 channel = connection.channel()
 
 my_config = Config(
@@ -27,7 +33,7 @@ s3 = boto3.resource('s3',
     config = my_config
 )
 
-bucket = s3.Bucket('orpheus')
+bucket = s3.Bucket(bucket_name)
 
 def processAction(action):
     tag, act = action
@@ -39,14 +45,14 @@ def processAction(action):
     print(data)
 
     with BytesIO() as audioFile:
-        unique_filename = str(uuid.uuid4())
-        torchaudio.save(audioFile, data, rate, format="wav")
+        unique_filename = str(uuid.uuid4()) + ".mp3"
+        torchaudio.save(audioFile, data, rate, format="mp3")
         audioFile.seek(0)
-        bucket.upload_fileobj(audioFile, f"{unique_filename}.wav")
+        bucket.upload_fileobj(audioFile, f"{unique_filename}")
 
         client = s3.meta.client
 
-        url = client.generate_presigned_url('get_object', Params={'Bucket': 'orpheus', 'Key': f"{unique_filename}.wav"}, ExpiresIn=3600)
+        url = client.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': f"{unique_filename}"}, ExpiresIn=3600)
         print(url)
 
     channel.basic_ack(tag)

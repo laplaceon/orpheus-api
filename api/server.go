@@ -28,21 +28,26 @@ func Server() {
 	docker := flag.Bool("docker", false, "Running in docker")
 	flag.Parse()
 
+	// prepare service, http handler and server
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	service := InitService()
+
+	traceRate := 1.0
+	if gin.Mode() == gin.ReleaseMode {
+		traceRate = 0.2
+	}
+
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:           "https://abd5e43ad02ef85f85e6756351bff329@o4505818349240320.ingest.sentry.io/4505818351534080",
 		EnableTracing: true,
 		// Set TracesSampleRate to 1.0 to capture 100%
 		// of transactions for performance monitoring.
 		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
+		TracesSampleRate: traceRate,
 	}); err != nil {
 		fmt.Printf("Sentry initialization failed: %v", err)
 	}
-
-	// prepare service, http handler and server
-	gin.SetMode(gin.TestMode)
-	router := gin.Default()
-	service := InitService()
 
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "Authorization")

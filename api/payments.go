@@ -43,14 +43,16 @@ func (s *Service) ProcessPaymentFromStripe(c *gin.Context) {
 				return
 			}
 
+			paymentId := checkoutSession.PaymentIntent.ID
+
 			if product_key, ok := checkoutSession.Metadata["product_key"]; ok {
 				switch product_key {
 				case "credits":
-					err = updatePurchasedCredits(userId, checkoutSession.AmountSubtotal, checkoutSession.ID, s.db)
+					err = updatePurchasedCredits(userId, checkoutSession.AmountSubtotal, paymentId, s.db)
 				case "plan_basic":
-					err = updatePlan(userId, 2, checkoutSession.ID, s.db)
+					err = updatePlan(userId, 2, paymentId, s.db)
 				case "plan_artist":
-					err = updatePlan(userId, 3, checkoutSession.ID, s.db)
+					err = updatePlan(userId, 3, paymentId, s.db)
 				}
 			} else {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to access product key"})

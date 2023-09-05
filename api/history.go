@@ -66,6 +66,7 @@ func getAllHistory(userId int, db *sql.DB) (history []HistoryItem, err ClientErr
 	}
 	defer rows.Close()
 
+	history = []HistoryItem{}
 	for rows.Next() {
 		h := HistoryItem{}
 		if err := rows.Scan(&h.Id, &h.UserId, &h.ActionId, &h.ActionName, &h.Cost, &h.Status, &h.CreatedAt); err != nil {
