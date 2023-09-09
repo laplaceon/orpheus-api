@@ -26,10 +26,11 @@ func Server() {
 	host := flag.String("host", "localhost", "Server host")
 	port := flag.Int("port", 8080, "Server port")
 	docker := flag.Bool("docker", false, "Running in docker")
+	mode := flag.String("mode", gin.TestMode, "Server mode")
 	flag.Parse()
 
 	// prepare service, http handler and server
-	gin.SetMode(gin.TestMode)
+	gin.SetMode(*mode)
 	router := gin.Default()
 	service := InitService()
 
@@ -72,7 +73,7 @@ func Server() {
 		api.GET("users/:id/history", service.GetAllHistory)
 		api.GET("history/:id", service.GetHistoryItem)
 		api.GET("history/:id/generated", service.GetGeneratedFromHistory)
-		api.POST("actions/genretransfer", service.CreateGenreTransferRequest)
+		api.POST("actions", service.CreateActionRequest)
 	}
 
 	// serve static files

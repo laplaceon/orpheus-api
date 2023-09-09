@@ -27,9 +27,9 @@ my_config = Config(
 )
 
 s3 = boto3.resource('s3',
-    endpoint_url = 'https://4a2ec92e72b8d8d4cbc6299d60a7fc78.r2.cloudflarestorage.com',
-    aws_access_key_id = 'bcd9890ef1859e0eabfea3f33b7ebc76',
-    aws_secret_access_key = 'c57960ac2f1339299cc7b83d82c1f65aed1ebac3527f6500ee49a3a2852205a5',
+    endpoint_url = os.getenv('R2_ENDPOINT'),
+    aws_access_key_id = os.getenv('R2_ACCESS_KEY_ID'),
+    aws_secret_access_key = os.getenv('R2_ACCESS_KEY_SECRET'),
     config = my_config
 )
 

@@ -21,7 +21,7 @@ type ApiKey struct {
 type Plan struct {
 	Id              int     `json:"id"`
 	Name            string  `json:"name"`
-	CreditsPerMonth float32 `json:"credits_per_month"`
+	CreditsPerMonth float64 `json:"credits_per_month"`
 	ExpiryDays      int     `json:"expiry_days"`
 }
 
@@ -36,7 +36,7 @@ type PlanPurchase struct {
 type CreditPurchase struct {
 	Id        int       `json:"id"`
 	UserId    int       `json:"user_id"`
-	Amount    float32   `json:"amount"`
+	Amount    float64   `json:"amount"`
 	StripeId  string    `json:"stripe_transaction_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -46,7 +46,7 @@ type HistoryItem struct {
 	UserId     int       `json:"user_id"`
 	ActionId   int       `json:"action_id"`
 	ActionName string    `json:"action_name"`
-	Cost       float32   `json:"cost"`
+	Cost       float64   `json:"cost"`
 	Status     int       `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -62,14 +62,14 @@ type GeneratedItem struct {
 type Action struct {
 	Id     int     `json:"id"`
 	Name   string  `json:"name"`
-	Cost   float32 `json:"cost"`
-	Length float32 `json:"length"`
+	Cost   float64 `json:"cost"`
+	Length float64 `json:"length"`
 }
 
-// type ActionCost struct {
-// 	Id        int       `json:"id"`
-// 	ActionId  int       `json:"action_id"`
-// 	Cost      float32   `json:"cost"`
-// 	Length    float32   `json:"length"`
-// 	CreatedAt time.Time `json:"created_at"`
-// }
+type ActionCost struct {
+	Id       int     `json:"id"`
+	ActionId int     `json:"action_id"`
+	Name     string  `json:"name"`
+	Cost     float64 `json:"cost"`
+	Length   float64 `json:"length"`
+}
