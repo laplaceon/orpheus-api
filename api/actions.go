@@ -89,6 +89,19 @@ func getAction(actionId int, db *sql.DB) (ActionCost, error) {
 }
 
 func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.Publisher) (historyId int64, err ClientError) {
+	row := db.QueryRow("SELECT verified FROM users WHERE id = ?", actionRequest.UserId)
+
+	var verified bool
+	if err = row.Scan(&verified); err != nil {
+		log.Println(err)
+		return
+	}
+
+	if !verified {
+		fmt.Println("Not verified")
+		return
+	}
+
 	dUrl, err := dataurl.DecodeString(actionRequest.Data)
 
 	if err != nil {
@@ -108,7 +121,7 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 		return
 	}
 
-	usableCredits, err := getUsableCredits(actionRequest.UserId, db)
+	userData, err := getUserWithId(actionRequest.UserId, db)
 	if err != nil {
 		log.Println(err)
 		return
@@ -122,13 +135,29 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 
 	estimatedCost := actionCost.Cost * dur.Seconds() / actionCost.Length
 
-	if estimatedCost > usableCredits {
+	if estimatedCost > userData.UsableCredits {
 		fmt.Println("Not enough credits")
 		return
 	}
 
+	insertStmt, err := db.Prepare("INSERT into history (user_id, plan_id, cost_id, input_size, status) VALUES (?, ?, ?, ?, 0);")
+	if err != nil {
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
+	defer insertStmt.Close()
+
+	insertResult, err := insertStmt.Exec(actionRequest.UserId, userData.PlanId, actionCost.Id, dur.Seconds())
+	if err != nil {
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
+
+	historyId, err = insertResult.LastInsertId()
+	if err != nil {
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
+	}
+
 	arB, err := msgpack.Marshal(ActionRequestProcessable{
-		HistoryId: actionRequest.UserId,
+		HistoryId: int(historyId),
 		ActionId:  actionRequest.ActionId,
 		Data:      actionRequest.Data,
 	})
@@ -141,22 +170,6 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 	if err != nil {
 		log.Println(err)
 		return
-	}
-
-	insertStmt, err := db.Prepare("INSERT into history (user_id, cost_id, input_size, status) VALUES (?, ?, ?, 0);")
-	if err != nil {
-		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
-	}
-	defer insertStmt.Close()
-
-	insertResult, err := insertStmt.Exec(actionRequest.UserId, actionCost.Id, dur.Seconds())
-	if err != nil {
-		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
-	}
-
-	historyId, err = insertResult.LastInsertId()
-	if err != nil {
-		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
 	return historyId, err
