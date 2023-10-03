@@ -6,17 +6,17 @@ require (
 	github.com/alexedwards/argon2id v0.0.0-20230305115115-4b3c3280a736
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/chenyahui/gin-cache v1.8.1
-	github.com/getsentry/sentry-go v0.24.0
+	github.com/getsentry/sentry-go v0.24.1
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-audio/wav v1.1.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lindell/go-burner-email-providers v1.0.84
-	github.com/stripe/stripe-go/v75 v75.4.0
+	github.com/lindell/go-burner-email-providers v1.0.85
+	github.com/stripe/stripe-go/v75 v75.8.0
 	github.com/vincent-petithory/dataurl v1.0.0
-	github.com/vmihailenco/msgpack/v5 v5.3.5
+	github.com/vmihailenco/msgpack/v5 v5.4.0
 	github.com/wagslane/go-rabbitmq v0.12.4
 )
 
@@ -32,7 +32,7 @@ require (
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.15.3 // indirect
+	github.com/go-playground/validator/v10 v10.15.5 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/jellydator/ttlcache/v2 v2.11.1 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/rabbitmq/amqp091-go v1.8.1 // indirect
+	github.com/rabbitmq/amqp091-go v1.9.0 // indirect
 	github.com/tcolgate/mp3 v0.0.0-20170426193717-e79c5a46d300 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect

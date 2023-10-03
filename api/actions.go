@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -21,7 +20,7 @@ type ActionRequest struct {
 }
 
 type ActionRequestProcessable struct {
-	HistoryId int    `msgpack:"history_id"`
+	HistoryId int64  `msgpack:"history_id"`
 	ActionId  int    `msgpack:"action_id"`
 	Data      string `msgpack:"data"`
 }
@@ -93,51 +92,39 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 
 	var verified bool
 	if err = row.Scan(&verified); err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
 	if !verified {
-		fmt.Println("Not verified")
-		return
+		return 0, NewHttpError(err, http.StatusForbidden, "User not verified. Please verify email before continuing.")
 	}
 
 	dUrl, err := dataurl.DecodeString(actionRequest.Data)
 
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	if dUrl.MediaType.ContentType() != "audio/wav" {
-		fmt.Println("Incorrect content type")
-		return
+	if err != nil || (dUrl.MediaType.ContentType() != "audio/wav") {
+		return 0, NewHttpError(err, http.StatusBadRequest, "Invalid data sent.")
 	}
 
 	decoder := wav.NewDecoder(bytes.NewReader(dUrl.Data))
 	dur, err := decoder.Duration()
 	if err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
 	userData, err := getUserWithId(actionRequest.UserId, db)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 
 	actionCost, err := getAction(actionRequest.ActionId, db)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 
 	estimatedCost := actionCost.Cost * dur.Seconds() / actionCost.Length
 
 	if estimatedCost > userData.UsableCredits {
-		fmt.Println("Not enough credits")
-		return
+		return 0, NewHttpError(err, http.StatusForbidden, "Not enough available credits to perform this action.")
 	}
 
 	insertStmt, err := db.Prepare("INSERT into history (user_id, plan_id, cost_id, input_size, status) VALUES (?, ?, ?, ?, 0);")
@@ -157,7 +144,7 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 	}
 
 	arB, err := msgpack.Marshal(ActionRequestProcessable{
-		HistoryId: int(historyId),
+		HistoryId: historyId,
 		ActionId:  actionRequest.ActionId,
 		Data:      actionRequest.Data,
 	})
@@ -168,8 +155,7 @@ func createActionRequest(actionRequest ActionRequest, db *sql.DB, pub *rabbitmq.
 	)
 
 	if err != nil {
-		log.Println(err)
-		return
+		return 0, NewHttpError(err, http.StatusInternalServerError, "There was a problem with the server")
 	}
 
 	return historyId, err
